@@ -1,5 +1,6 @@
 
 import os
+import numpy as np
 
 def create_base_directory(geometry):
     root = os.getcwd()
@@ -11,7 +12,7 @@ def create_base_directory(geometry):
         return geometry_dir
 
 def create_holes_directories(base, N_roles):
-    N_roles_dir_name = '{}_roles'.format(N_roles)
+    N_roles_dir_name = '{}_holes'.format(N_roles)
     N_roles_subdir = os.path.join(base, N_roles_dir_name)
     if not os.path.isdir(N_roles_subdir):
         os.mkdir(N_roles_subdir)
@@ -152,3 +153,74 @@ def create_all_directories(geometry, N_roles, Ts, sizes):
             create_hysteresis_subdirs(hysteresis_dirs, sizes)
             create_scripts_subdirs(scripts_dirs, sizes)
             create_groundstates_subdirs(groundstates_dirs, sizes)
+
+def get_random_position(size, R_holes): 
+    r = 2 * (np.random.rand(3) - 0.5)
+    while (r[0]**2 + r[1]**2 + r[2]**2) > 1:
+        r = 2 * (np.random.rand(3) - 0.5)
+    return r * (size/2 - R_holes) 
+
+def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
+    meshsize = 0.009
+    s = '#!python \n'
+    s += 'import cubit \n'
+    s += 'cubit.init([""]) \n'
+    s += "cubit.cmd(\"brick x {0:g}\") \n".format(size/1000)
+    n_swiss_cheese = 1
+    n_hole = 2
+    for n in range(N_holes):
+        s += "cubit.cmd(\"create sphere radius {0:g}\") \n".format(R_holes)
+        r = get_random_position(size, R_holes)
+        s += "cubit.cmd(\"volume {0:g} move x {1:g} y {2:g} z {3:g} \")  \n".format(n_hole, r[0]/1000, r[1]/1000, r[2]/1000)
+        s += "cubit.cmd(\"subtract volume {0:g} from volume {1:g}\") \n".format(n_hole, n_swiss_cheese)
+        n_swiss_cheese = n_hole + 1
+        n_hole = n_swiss_cheese + 1
+    s += "cubit.cmd(\"volume {0:g} size {1:g}\")\n".format(n_swiss_cheese, meshsize)
+    s += "cubit.cmd(\"volume {0:g} scheme Tetmesh\") \n".format(n_swiss_cheese)
+    s += "cubit.cmd(\"mesh volume {0:g}\") \n".format(n_swiss_cheese)
+    s += "cubit.cmd(\"block 1 volume {0:g}\") \n".format(n_swiss_cheese)
+    s += "cubit.cmd(\"block 1 element type tetra4\") \n"
+    base = create_holes_directories(create_base_directory(geometry), N_holes)
+    for i in range(len(Ts)):
+        if i == 0:
+            cubit_file_path = os.path.join(base,
+                                          'T{}'.format(Ts[i]),
+                                          'cubit',
+                                          's{0:g}_N{1:g}_T{2:g}_R{3:g}.jou'.format(size, N_holes, Ts[i], R_holes*1000))
+            patran_file_path = os.path.join(base,
+                                            'T{}'.format(Ts[i]),
+                                            'patran',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_holes, Ts[i], R_holes*1000))
+            full_path = "/" + "/".join(patran_file_path.split('\\')[1:])
+            s += 'cubit.cmd(\"export patran \'C:{}\' overwrite\") \n'.format(full_path)
+            with open(cubit_file_path, 'w') as f:
+                f.write(s)
+        else:
+            cubit_file_path_previous = os.path.join(base,
+                                                    'T{}'.format(Ts[i-1]),
+                                                    'cubit',
+                                                    's{0:g}_N{1:g}_T{2:g}_R{3:g}.jou'.format(size, N_holes, Ts[i-1], R_holes*1000))
+            with open(cubit_file_path_previous, 'r') as f:
+                content = f.readlines()
+            for j in range(len(content[:-1])):
+                if j == 0:
+                    s = content[j]
+                else:
+                    s += content[j]                          
+            cubit_file_path_new = os.path.join(base,
+                                              'T{}'.format(Ts[i]),
+                                              'cubit',
+                                              's{0:g}_N{1:g}_T{2:g}_R{3:g}.jou'.format(size, N_holes, Ts[i], R_holes*1000))
+            patran_file_path = os.path.join(base,
+                                            'T{}'.format(Ts[i]),
+                                            'patran',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_holes, Ts[i], R_holes*1000))
+            full_path = "/" + "/".join(patran_file_path.split('\\')[1:])
+            s += 'cubit.cmd(\"export patran \'C:{}\' overwrite \") \n'.format(full_path)
+            with open(cubit_file_path_new, 'w') as f:
+                f.write(s)
+                
+def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes):
+    for N_hole in N_holes:
+        for size in sizes:
+            create_swiss_cheese_mesh(geometry, N_hole, Ts, size, R_holes)
