@@ -224,3 +224,39 @@ def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes):
     for N_hole in N_holes:
         for size in sizes:
             create_swiss_cheese_mesh(geometry, N_hole, Ts, size, R_holes)
+
+def create_cubit_python_script(geometry, N_holes, Ts, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            cubit_dir_path = os.path.join(base,
+                                         '{}_holes'.format(N_hole),
+                                         'T{}'.format(T),
+                                         'cubit')
+            python_script_path = os.path.join(cubit_dir_path, 'N{0:g}_T{1:g}_R{2:g}_meshes.py'.format(N_hole, T, R_holes*1000))
+            with open(python_script_path, 'w') as f:
+                f.write('#!python \n')
+                f.write('import cubit \n')
+                f.write('cubit.init([""]) \n')
+                f.write('cubit.cmd(\"set journal off\") \n')
+                for cubit_script in os.listdir(cubit_dir_path):
+                    if 'meshes' not in os.path.splitext(cubit_script)[0]:
+                        cubit_script_path = os.path.join(cubit_dir_path, cubit_script)
+                        with open(cubit_script_path, 'r') as cubitf:
+                            content = cubitf.readlines()
+                        for line in content[4:]:
+                            f.write('{}'.format(line))
+                        f.write("\n")      
+                
+def execute_cubit_python_script(geometry, N_holes, Ts, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            path = os.path.join(base,
+                               'N_holes'.format(N_holes),
+                               'T{}'.format(T),
+                               'cubit',
+                               'N{0:g}_T{1:g}_R{2:g}_meshes.py'.format(N_hole, T, R_holes*1000))
+            # execute
+            os.system('cubit_python {}'.format(path))
+    
