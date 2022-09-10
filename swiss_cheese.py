@@ -11,8 +11,8 @@ def create_base_directory(geometry):
     else:
         return geometry_dir
 
-def create_holes_directories(base, N_roles):
-    N_roles_dir_name = '{}_holes'.format(N_roles)
+def create_holes_directories(base, N_roles, R_holes):
+    N_roles_dir_name = '{}_holes_R{}'.format(N_roles, int(R_holes*1000))
     N_roles_subdir = os.path.join(base, N_roles_dir_name)
     if not os.path.isdir(N_roles_subdir):
         os.mkdir(N_roles_subdir)
@@ -135,11 +135,11 @@ def create_groundstates_subdirs(groundstates_dirs, sizes):
             if not os.path.isdir(path):
                 os.mkdir(path)           
                         
-def create_all_directories(geometry, N_roles, Ts, sizes):
+def create_all_directories(geometry, N_roles, Ts, sizes, R_holes):
     base = create_base_directory(geometry)
     for N_role in N_roles:
         for T in Ts:
-            hole_dir = create_holes_directories(base, N_role)
+            hole_dir = create_holes_directories(base, N_role, R_holes)
             temp_dir = create_temperature_subdirectory(hole_dir, T)
             temp_subdirs = create_temperature_subdirectories(temp_dir)
             # sub directories
@@ -180,7 +180,7 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
     s += "cubit.cmd(\"mesh volume {0:g}\") \n".format(n_swiss_cheese)
     s += "cubit.cmd(\"block 1 volume {0:g}\") \n".format(n_swiss_cheese)
     s += "cubit.cmd(\"block 1 element type tetra4\") \n"
-    base = create_holes_directories(create_base_directory(geometry), N_holes)
+    base = create_holes_directories(create_base_directory(geometry), N_holes, R_holes)
     for i in range(len(Ts)):
         if i == 0:
             cubit_file_path = os.path.join(base,
@@ -193,6 +193,7 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_holes, Ts[i], R_holes*1000))
             full_path = "/" + "/".join(patran_file_path.split('\\')[1:])
             s += 'cubit.cmd(\"export patran \'C:{}\' overwrite\") \n'.format(full_path)
+            s += "cubit.cmd(\"reset\") \n"
             with open(cubit_file_path, 'w') as f:
                 f.write(s)
         else:
@@ -217,6 +218,7 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_holes, Ts[i], R_holes*1000))
             full_path = "/" + "/".join(patran_file_path.split('\\')[1:])
             s += 'cubit.cmd(\"export patran \'C:{}\' overwrite \") \n'.format(full_path)
+            s += "cubit.cmd(\"reset\") \n"
             with open(cubit_file_path_new, 'w') as f:
                 f.write(s)
                 
@@ -230,7 +232,7 @@ def create_cubit_python_script(geometry, N_holes, Ts, R_holes):
     for N_hole in N_holes:
         for T in Ts:
             cubit_dir_path = os.path.join(base,
-                                         '{}_holes'.format(N_hole),
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
                                          'T{}'.format(T),
                                          'cubit')
             python_script_path = os.path.join(cubit_dir_path, 'N{0:g}_T{1:g}_R{2:g}_meshes.py'.format(N_hole, T, R_holes*1000))
@@ -244,7 +246,7 @@ def create_cubit_python_script(geometry, N_holes, Ts, R_holes):
                         cubit_script_path = os.path.join(cubit_dir_path, cubit_script)
                         with open(cubit_script_path, 'r') as cubitf:
                             content = cubitf.readlines()
-                        for line in content[4:]:
+                        for line in content[3:]:
                             f.write('{}'.format(line))
                         f.write("\n")      
                 
@@ -253,10 +255,41 @@ def execute_cubit_python_script(geometry, N_holes, Ts, R_holes):
     for N_hole in N_holes:
         for T in Ts:
             path = os.path.join(base,
-                               'N_holes'.format(N_holes),
+                               '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
                                'T{}'.format(T),
                                'cubit',
                                'N{0:g}_T{1:g}_R{2:g}_meshes.py'.format(N_hole, T, R_holes*1000))
             # execute
+            print(path)
             os.system('cubit_python {}'.format(path))
-    
+
+def create_swiss_cheese_groundstates_script(geometry, N_holes, Ts, sizes, R_holes, n_lem):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            gs_dir_path = os.path.join(base,
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                         'T{}'.format(T),
+                                         'scripts',
+                                         'groundstates')
+            patran_dir_path = os.path.join(base,
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                         'T{}'.format(T),
+                                         'patran')
+            for size in sizes:
+                filename = 's{0:g}_N{1:g}_T{2:g}_R{3:g}'.format(size, N_hole, T, R_holes*1000)      
+                patran_filepath = os.path.join(patran_dir_path, filename + '.pat')
+                patran_filepath = "/" + "/".join(patran_filepath.split('\\')[1:])
+                with open(os.path.join(gs_dir_path, filename), 'w') as f:
+                    f.write("Magnetite {} C \n".format(T))
+                    f.write("ReadMesh 1 {} \n".format(patran_filepath))
+                    for i in range(n_lem):
+                        f.write("! Random state # {} \n ".format(i))
+                        f.write("Randomize All Moments \n")
+                        f.write("Energylog {} \n".format(filename))
+                        f.write("Minimize \n")
+                        f.write("WriteMagnetization {} \n".format(filename))
+                        f.write("WriteHyst {} \n".format(filename))
+                        f.write("CloseLogFile \n")
+                        f.write("\n")
+                
