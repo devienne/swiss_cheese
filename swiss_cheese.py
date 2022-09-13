@@ -556,6 +556,7 @@ def create_size_hysteresis_scripts_up(geometry, N_holes, Ts, sizes, R_holes):
                                             'T{0:g}'.format(T),
                                             'energylog',
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
+                    el_path = "/" + "/".join(el_path.split('\\')[1:])
                     f.write("Energylog {} \n".format(el_path))
                     f.write("Minimize \n")
                     sols_path = os.path.join(base,
@@ -633,6 +634,7 @@ def create_size_hysteresis_scripts_down(geometry, N_holes, Ts, sizes, R_holes):
                                             'T{0:g}'.format(T),
                                             'energylog',
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
+                    el_path = "/" + "/".join(el_path.split('\\')[1:])
                     f.write("Energylog {} \n".format(el_path))
                     f.write("Minimize \n")
                     sols_path = os.path.join(base,
