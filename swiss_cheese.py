@@ -154,16 +154,19 @@ def create_all_directories(geometry, N_roles, Ts, sizes, R_holes):
             create_scripts_subdirs(scripts_dirs, sizes)
             create_groundstates_subdirs(groundstates_dirs, sizes)
 
-def get_random_position(): 
-    r = 2 * (np.random.rand(3) - 0.5)
-    while (r[0]**2 + r[1]**2 + r[2]**2) > 1:
+def get_random_position(N_holes): 
+    positions = []
+    for i in range(N_holes):
         r = 2 * (np.random.rand(3) - 0.5)
-    return r 
+        while (r[0]**2 + r[1]**2 + r[2]**2) > 1:
+            r = 2 * (np.random.rand(3) - 0.5)
+        positions.append(r)
+    return np.array(positions) 
 
-def hole_position(r, size, R_holes): 
-    return r * (size/2 - R_holes) 
+def hole_position(p, size, R_holes): 
+    return p * (size/2 - R_holes) 
 
-def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes, r):
+def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes, p):
     meshsize = 0.009
     s = '#!python \n'
     s += 'import cubit \n'
@@ -171,9 +174,9 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes, r):
     s += "cubit.cmd(\"brick x {0:g}\") \n".format(size/1000)
     n_swiss_cheese = 1
     n_hole = 2
-    for n in range(N_holes):
+    for n in range(len(p)):
         s += "cubit.cmd(\"create sphere radius {0:g}\") \n".format(R_holes)
-        r = hole_position(r, size, R_holes)
+        r = p[n]
         s += "cubit.cmd(\"volume {0:g} move x {1:g} y {2:g} z {3:g} \")  \n".format(n_hole, r[0]/1000, r[1]/1000, r[2]/1000)
         s += "cubit.cmd(\"subtract volume {0:g} from volume {1:g}\") \n".format(n_hole, n_swiss_cheese)
         n_swiss_cheese = n_hole + 1
@@ -225,9 +228,11 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes, r):
             with open(cubit_file_path_new, 'w') as f:
                 f.write(s)
                 
-def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes, r):
+def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes):
     for N_hole in N_holes:
+        p = get_random_position(N_hole)
         for size in sizes:
+            r = hole_position(p, size, R_holes)
             create_swiss_cheese_mesh(geometry, N_hole, Ts, size, R_holes, r)
 
 def create_cubit_python_script(geometry, N_holes, Ts, R_holes):
