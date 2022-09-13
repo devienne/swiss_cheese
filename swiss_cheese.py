@@ -283,13 +283,390 @@ def create_swiss_cheese_groundstates_script(geometry, N_holes, Ts, sizes, R_hole
                 with open(os.path.join(gs_dir_path, filename), 'w') as f:
                     f.write("Magnetite {} C \n".format(T))
                     f.write("ReadMesh 1 {} \n".format(patran_filepath))
-                    for i in range(n_lem):
+                    for i in range(1, n_lem + 1):
                         f.write("! Random state # {} \n ".format(i))
                         f.write("Randomize All Moments \n")
-                        f.write("Energylog {} \n".format(filename))
+                        energylog_path = os.path.join(base,
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                         'T{}'.format(T),
+                                         'energylog',
+                                         'groundstates',
+                                         str(size),
+                                         filename + '_{}'.format(i))
+                        energylog_path = "/" + "/".join(energylog_path.split('\\')[1:])
+                        f.write("Energylog {} \n".format(energylog_path))
                         f.write("Minimize \n")
-                        f.write("WriteMagnetization {} \n".format(filename))
-                        f.write("WriteHyst {} \n".format(filename))
+                        gs_path = os.path.join(base,
+                                              '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                              'T{}'.format(T),
+                                              'groundstates',
+                                              str(size),
+                                              filename + '_{}'.format(i))
+                        gs_path = "/" + "/".join(gs_path.split('\\')[1:])
+                        f.write("WriteMagnetization {} \n".format(gs_path))
+                        hyst_path = os.path.join(base,
+                                              '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                              'T{}'.format(T),
+                                              'hysteresis',
+                                              'groundstates',
+                                              str(size),
+                                              filename + '_{}'.format(i))
+                        hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                        f.write("WriteHyst {} \n".format(hyst_path))
                         f.write("CloseLogFile \n")
                         f.write("\n")
+
+def create_batch_script_groundstates(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            mscripts_dir = os.path.join(base,
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                         'T{}'.format(T),
+                                         'scripts',
+                                         'groundstates')
+            batch_script_path = os.path.join(base,
+                                         '{}_holes_R{}'.format(N_hole, int(R_holes*1000)),
+                                         'T{}'.format(T),
+                                         'scripts',
+                                         'batch',
+                                         'N{0:g}_T{1:g}_R{2:g}_groundstates.bat'.format(N_hole, T, R_holes*1000))
+            with open(batch_script_path, 'w') as f:
+                for file in os.listdir(mscripts_dir):
+                    filepath = os.path.join(mscripts_dir, file)
+                    f.write('merrill {} \n'.format(filepath))
+                    
+def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            for size in sizes:
+                patran_path = os.path.join(base,
+                                          '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                          'T{0:g}'.format(T),
+                                          'patran',
+                                          's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_hole, T, R_holes*1000))
+                patran_path = "/" + "/".join(patran_path.split('\\')[1:])
+                Hx, Hy, Hz = H                                                                      
+                hyst_script_path = os.path.join(base,
+                                                '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                'T{0:g}'.format(T),
+                                                'scripts',
+                                                'hysteresis',
+                                                str(size),
+                                                's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                with open(hyst_script_path, 'w') as f:                    
+                    f.write("! Hysteresis loops")
+                    f.write(" \n")
+                    f.write("Set MaxMeshNumber 1 \n")
+                    f.write("Set MaxEnergyEvaluations 10000 \n")
+                    f.write(" Magnetite {0:g} C \n".format(T))
+                    f.write("ReadMesh 1 {} \n".format(patran_path))           
+                    f.write("External Field Direction {} {} {} \n".format(Hx[0], Hy[0], Hz[0]))
+                    f.write("External Field Strength 0 mT \n")
+                    f.write("Uniform Magnetization 1 1 1  \n")
+                    # loop 1
+                    f.write("Loop field 500 100 -20 \n")
+                    f.write("   Randomize Magnetization 10 \n")
+                    f.write("   External Field Strength #field mT \n")
+                    f.write("   Minimize \n")   
+                    hyst_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'loops',
+                                            str(size),
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                    f.write("   WriteHyst {} \n".format(hyst_path))
+                    gs_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'groundstates',
+                                            str(size),
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    gs_path = "/" + "/".join(gs_path.split('\\')[1:])
+                    f.write("   WriteMagnetization {} \n".format(gs_path))
+                    f.write("EndLoop \n")
+                    # loop 2
+                    f.write("Loop field 100 -100 -5 \n")
+                    f.write("   Randomize Magnetization 10 \n")
+                    f.write("   External Field Strength #field mT \n")
+                    f.write("   Minimize \n")
+                    hyst_path = os.path.join(base,
+                                                '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                'T{0:g}'.format(T),
+                                                'hysteresis',
+                                                'loops',
+                                                str(size),
+                                                's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                    f.write("   WriteHyst {} \n".format(hyst_path))
+                    gs_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'groundstates',
+                                            str(size),
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    gs_path = "/" + "/".join(gs_path.split('\\')[1:])
+                    f.write("   WriteMagnetization {} \n".format(gs_path))
+                    f.write("EndLoop \n")
+                    # loop 3
+                    f.write("Loop field -100 -500 -20 \n")
+                    f.write("   Randomize Magnetization 10 \n")
+                    f.write("   External Field Strength #field mT \n")
+                    f.write("   Minimize \n")  
+                    hyst_path = os.path.join(base,
+                                                '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                'T{0:g}'.format(T),
+                                                'hysteresis',
+                                                'loops',
+                                                str(size),
+                                                's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                    f.write("   WriteHyst {} \n".format(hyst_path))
+                    gs_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'groundstates',
+                                            str(size),
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
+                                                                                                      N_hole,
+                                                                                                      T,
+                                                                                                      R_holes*1000,
+                                                                                                      round(Hx[0],2),
+                                                                                                      round(Hy[0],2),
+                                                                                                      round(Hz[0],2)))
+                    f.write("   WriteMagnetization {}  \n".format(gs_path))
+                    f.write("EndLoop \n")  
+                    
+def field_components(theta, phi):
+    hx = np.sin(theta)*np.sin(phi)
+    hy = np.cos(theta)
+    hz = np.sin(theta)*np.cos(phi)
+    if hx < 1e-10:
+        hx = 0
+    if hy < 1e-10:
+        hy = 0
+    if hz < 1e-10:
+        hz = 0
+    return hx, hy, hz
+
+def create_batch_script_hysteresis(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            for size in sizes:
+                hyst_dir = os.path.join(base,
+                                        '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                        'T{0:g}'.format(T),
+                                        'scripts',
+                                        'hysteresis',
+                                        str(size))
+                batch_script_path = os.path.join(base,
+                                                '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                'T{0:g}'.format(T),
+                                                'scripts',
+                                                'batch',
+                                                's{0:g}_N{1:g}_T{2:g}_hyst.bat'.format(size,
+                                                                                N_hole,
+                                                                                T,
+                                                                                R_holes*1000))
+                with open(batch_script_path, 'w') as f:
+                    for file in os.listdir(hyst_dir):
+                        filepath = os.path.join(hyst_dir, file)
+                        f.write('merrill {} \n'.format(filepath))
+
+def create_size_hysteresis_scripts_up(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            for size in sizes:
+                patran_path = os.path.join(base,
+                                          '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                          'T{0:g}'.format(T),
+                                          'patran',
+                                          's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_hole, T, R_holes*1000))
+                patran_path = "/" + "/".join(patran_path.split('\\')[1:])
                 
+                groundstates_script_path = os.path.join(base,
+                                                    '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                    'T{0:g}'.format(T),
+                                                    'scripts',
+                                                    'size_hysteresis',
+                                                    's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
+                groundstates_script_path = "/" + "/".join(groundstates_script_path.split('\\')[1:])
+                with open(groundstates_script_path, 'w') as f:                    
+                    f.write(" \n")
+                    f.write("Set MaxMeshNumber 1 \n")
+                    f.write("Set MaxEnergyEvaluations 10000 \n")
+                    f.write("ReadMesh 1 {} \n".format(patran_path))
+                    f.write("Magnetite {0:g} C \n".format(T))
+                    f.write(" \n")
+                    f.write("Uniform Magnetization 1 1 1.0001 \n")
+                    f.write("Randomize Magnetization 10 \n")
+                    el_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'energylog',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
+                    f.write("Energylog {} \n".format(el_path))
+                    f.write("Minimize \n")
+                    sols_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'size_loop',
+                                            'states',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
+                    sols_path = "/" + "/".join(sols_path.split('\\')[1:])
+                    f.write("WriteMagnetization {}  \n".format(sols_path))
+                    hyst_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'size_loop',
+                                            'states',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
+                    hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                    f.write("WriteHyst {} \n".format(hyst_path))
+                    f.write("CloseLogFile \n")                            
+                    f.write(" \n")                        
+                    
+def create_batch_script_size_hysteresis_up(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            mscripts_dir = os.path.join(base,
+                                        '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                        'T{0:g}'.format(T),
+                                        'scripts',
+                                        'size_hysteresis')
+            batch_script_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'scripts',
+                                            'batch',
+                                            'N{0:g}_T{1:g}_R{2:g}_up.bat'.format(N_hole, T, R_holes*1000))
+            with open(batch_script_path, 'w') as f:
+                for file in os.listdir(mscripts_dir):
+                    if 'up' in file:
+                        filepath = os.path.join(mscripts_dir, file)
+                        f.write('merrill {} \n'.format(filepath))
+    
+def create_size_hysteresis_scripts_down(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            for size in sizes:
+                patran_path = os.path.join(base,
+                                          '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                          'T{0:g}'.format(T),
+                                          'patran',
+                                          's{0:g}_N{1:g}_T{2:g}_R{3:g}.pat'.format(size, N_hole, T, R_holes*1000))
+                patran_path = "/" + "/".join(patran_path.split('\\')[1:])
+                
+                groundstates_script_path = os.path.join(base,
+                                                    '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                                    'T{0:g}'.format(T),
+                                                    'scripts',
+                                                    'size_hysteresis',
+                                                    's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
+                groundstates_script_path = "/" + "/".join(groundstates_script_path.split('\\')[1:])
+                with open(groundstates_script_path, 'w') as f:                    
+                    f.write(" \n")
+                    f.write("Set MaxMeshNumber 1 \n")
+                    f.write("Set MaxEnergyEvaluations 10000 \n")
+                    f.write("ReadMesh 1 {} \n".format(patran_path))
+                    f.write("Magnetite {0:g} C \n".format(T))
+                    f.write(" \n")
+                    f.write("Vortex 0 0 1.0001 0.002 LH \n")
+                    f.write("Randomize Magnetization 10 \n")
+                    el_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'energylog',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
+                    f.write("Energylog {} \n".format(el_path))
+                    f.write("Minimize \n")
+                    sols_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'size_loop',
+                                            'states',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
+                    sols_path = "/" + "/".join(sols_path.split('\\')[1:])
+                    f.write("WriteMagnetization {}  \n".format(sols_path))
+                    hyst_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'hysteresis',
+                                            'size_loop',
+                                            'states',
+                                            's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
+                    hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
+                    f.write("WriteHyst {} \n".format(hyst_path))
+                    f.write("CloseLogFile \n")                            
+                    f.write(" \n")
+                    
+def create_batch_script_size_hysteresis_down(geometry, N_holes, Ts, sizes, R_holes):
+    base = create_base_directory(geometry)
+    for N_hole in N_holes:
+        for T in Ts:
+            mscripts_dir = os.path.join(base,
+                                        '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                        'T{0:g}'.format(T),
+                                        'scripts',
+                                        'size_hysteresis')
+            batch_script_path = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'scripts',
+                                            'batch',
+                                            'N{0:g}_T{1:g}_R{2:g}_down.bat'.format(N_hole, T, R_holes*1000))
+            with open(batch_script_path, 'w') as f:
+                for file in os.listdir(mscripts_dir):
+                    if 'up' in file:
+                        filepath = os.path.join(mscripts_dir, file)
+                        f.write('merrill {} \n'.format(filepath))
+                        
