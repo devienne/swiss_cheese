@@ -498,23 +498,22 @@ def create_batch_script_hysteresis(geometry, N_holes, Ts, sizes, R_holes):
     base = create_base_directory(geometry)
     for N_hole in N_holes:
         for T in Ts:
-            for size in sizes:
-                hyst_dir = os.path.join(base,
-                                        '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
-                                        'T{0:g}'.format(T),
-                                        'scripts',
-                                        'hysteresis',
-                                        str(size))
-                batch_script_path = os.path.join(base,
+            batch_script_path = os.path.join(base,
                                                 '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
                                                 'T{0:g}'.format(T),
                                                 'scripts',
                                                 'batch',
-                                                's{0:g}_N{1:g}_T{2:g}_hyst.bat'.format(size,
-                                                                                N_hole,
+                                                'N{1:g}_T{2:g}_hyst.bat'.format(N_hole,
                                                                                 T,
                                                                                 R_holes*1000))
-                with open(batch_script_path, 'w') as f:
+            with open (batch_script_path, 'w') as f:
+                for size in sizes:
+                    hyst_dir = os.path.join(base,
+                                            '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
+                                            'T{0:g}'.format(T),
+                                            'scripts',
+                                            'hysteresis',
+                                            str(size))
                     for file in os.listdir(hyst_dir):
                         filepath = os.path.join(hyst_dir, file)
                         f.write('merrill {} \n'.format(filepath))
