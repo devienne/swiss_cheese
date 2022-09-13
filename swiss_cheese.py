@@ -154,13 +154,16 @@ def create_all_directories(geometry, N_roles, Ts, sizes, R_holes):
             create_scripts_subdirs(scripts_dirs, sizes)
             create_groundstates_subdirs(groundstates_dirs, sizes)
 
-def get_random_position(size, R_holes): 
+def get_random_position(): 
     r = 2 * (np.random.rand(3) - 0.5)
     while (r[0]**2 + r[1]**2 + r[2]**2) > 1:
         r = 2 * (np.random.rand(3) - 0.5)
+    return r 
+
+def hole_position(r, size, R_holes): 
     return r * (size/2 - R_holes) 
 
-def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
+def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes, r):
     meshsize = 0.009
     s = '#!python \n'
     s += 'import cubit \n'
@@ -170,7 +173,7 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
     n_hole = 2
     for n in range(N_holes):
         s += "cubit.cmd(\"create sphere radius {0:g}\") \n".format(R_holes)
-        r = get_random_position(size, R_holes)
+        r = hole_position(r, size, R_holes)
         s += "cubit.cmd(\"volume {0:g} move x {1:g} y {2:g} z {3:g} \")  \n".format(n_hole, r[0]/1000, r[1]/1000, r[2]/1000)
         s += "cubit.cmd(\"subtract volume {0:g} from volume {1:g}\") \n".format(n_hole, n_swiss_cheese)
         n_swiss_cheese = n_hole + 1
@@ -222,10 +225,10 @@ def create_swiss_cheese_mesh(geometry, N_holes, Ts, size, R_holes):
             with open(cubit_file_path_new, 'w') as f:
                 f.write(s)
                 
-def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes):
+def create_swiss_cheese_meshes(geometry, N_holes, Ts, sizes, R_holes, r):
     for N_hole in N_holes:
         for size in sizes:
-            create_swiss_cheese_mesh(geometry, N_hole, Ts, size, R_holes)
+            create_swiss_cheese_mesh(geometry, N_hole, Ts, size, R_holes, r)
 
 def create_cubit_python_script(geometry, N_holes, Ts, R_holes):
     base = create_base_directory(geometry)
@@ -366,7 +369,7 @@ def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
                     f.write(" \n")
                     f.write("Set MaxMeshNumber 1 \n")
                     f.write("Set MaxEnergyEvaluations 10000 \n")
-                    f.write(" Magnetite {0:g} C \n".format(T))
+                    f.write("Magnetite {0:g} C \n".format(T))
                     f.write("ReadMesh 1 {} \n".format(patran_path))           
                     f.write("External Field Direction {} {} {} \n".format(Hx[0], Hy[0], Hz[0]))
                     f.write("External Field Strength 0 mT \n")
