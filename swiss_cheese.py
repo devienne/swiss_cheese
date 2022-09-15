@@ -403,7 +403,7 @@ def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
                                             '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
                                             'T{0:g}'.format(T),
                                             'hysteresis',
-                                            'groundstates',
+                                            'loops',
                                             str(size),
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
                                                                                                       N_hole,
@@ -439,7 +439,7 @@ def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
                                             '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
                                             'T{0:g}'.format(T),
                                             'hysteresis',
-                                            'groundstates',
+                                            'loops',
                                             str(size),
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
                                                                                                       N_hole,
@@ -475,7 +475,7 @@ def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
                                             '{0:g}_holes_R{1:g}'.format(N_hole, R_holes*1000),
                                             'T{0:g}'.format(T),
                                             'hysteresis',
-                                            'groundstates',
+                                            'loops',
                                             str(size),
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_{4:g}_{5:g}_{6:g}_#field_mT'.format(size,
                                                                                                       N_hole,
@@ -484,6 +484,7 @@ def create_hysteresis_scripts(geometry, N_holes, Ts, sizes, R_holes, H):
                                                                                                       round(Hx[0],2),
                                                                                                       round(Hy[0],2),
                                                                                                       round(Hz[0],2)))
+                    gs_path = "/" + "/".join(gs_path.split('\\')[1:])
                     f.write("   WriteMagnetization {}  \n".format(gs_path))
                     f.write("EndLoop \n")  
                     
@@ -508,7 +509,7 @@ def create_batch_script_hysteresis(geometry, N_holes, Ts, sizes, R_holes):
                                                 'T{0:g}'.format(T),
                                                 'scripts',
                                                 'batch',
-                                                'N{1:g}_T{2:g}_hyst.bat'.format(N_hole,
+                                                'N{0:g}_T{1:g}_R{2:g}_hyst.bat'.format(N_hole,
                                                                                 T,
                                                                                 R_holes*1000))
             with open (batch_script_path, 'w') as f:
@@ -573,7 +574,7 @@ def create_size_hysteresis_scripts_up(geometry, N_holes, Ts, sizes, R_holes):
                                             'T{0:g}'.format(T),
                                             'hysteresis',
                                             'size_loop',
-                                            'states',
+                                            'hyst',
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_up'.format(size, N_hole, T, R_holes*1000))
                     hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
                     f.write("WriteHyst {} \n".format(hyst_path))
@@ -651,7 +652,7 @@ def create_size_hysteresis_scripts_down(geometry, N_holes, Ts, sizes, R_holes):
                                             'T{0:g}'.format(T),
                                             'hysteresis',
                                             'size_loop',
-                                            'states',
+                                            'hyst',
                                             's{0:g}_N{1:g}_T{2:g}_R{3:g}_down'.format(size, N_hole, T, R_holes*1000))
                     hyst_path = "/" + "/".join(hyst_path.split('\\')[1:])
                     f.write("WriteHyst {} \n".format(hyst_path))
@@ -675,7 +676,7 @@ def create_batch_script_size_hysteresis_down(geometry, N_holes, Ts, sizes, R_hol
                                             'N{0:g}_T{1:g}_R{2:g}_down.bat'.format(N_hole, T, R_holes*1000))
             with open(batch_script_path, 'w') as f:
                 for file in os.listdir(mscripts_dir):
-                    if 'up' in file:
+                    if 'down' in file:
                         filepath = os.path.join(mscripts_dir, file)
                         f.write('merrill {} \n'.format(filepath))
                         
